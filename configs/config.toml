@@ -1,0 +1,5 @@
+[tsdb]
+host = "192.168.0.153"
+port = 6030
+username = "root"
+password = "taosdata"
