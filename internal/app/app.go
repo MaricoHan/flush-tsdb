@@ -2,27 +2,22 @@ package app
 
 import (
 	"database/sql"
-	"flush-tsdb/internal/pkg/configs"
-	"flush-tsdb/internal/pkg/tsdb"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"regexp"
 	"strings"
+
+	"flush-tsdb/internal/pkg/tsdb"
+	"github.com/sirupsen/logrus"
 )
 
 func Server(log *logrus.Entry) {
 
-	if err := tsdb.NewTDEngine().Init(configs.NewConfigs().TSDB); err != nil {
+	if err := tsdb.Init(tsdb.DSN); err != nil {
 		log.WithError(err).Errorln("init TDEngine connection err")
 		return
 	}
 
-	dbs := map[string]*sql.DB{
-		"txs":     tsdb.NewTDEngine().TxsClient,
-		"txs_gas": tsdb.NewTDEngine().TxsGasClient,
-		"amounts": tsdb.NewTDEngine().AmountClient,
-	}
-	for m, db := range dbs {
+	for m, db := range tsdb.DBs {
 		if err := flush(m, db); err != nil {
 			log.WithError(err).Errorf("flush metric %s err: %s", m, err)
 			return
