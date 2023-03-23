@@ -6,25 +6,27 @@ import (
 	"regexp"
 	"strings"
 
-	"flush-tsdb/internal/pkg/tsdb"
+	"github.com/jony-lee/go-progress-bar"
 	"github.com/sirupsen/logrus"
+
+	"flush-tsdb/internal/pkg/tsdb"
 )
 
-func Server(log *logrus.Entry) {
-
+func FlushTag(log *logrus.Entry) {
 	if err := tsdb.Init(tsdb.DSN); err != nil {
 		log.WithError(err).Errorln("init TDEngine connection err")
 		return
 	}
 
-	for m, db := range tsdb.DBs {
-		if err := flush(m, db); err != nil {
+	for _, m := range tsdb.Metrics {
+		log.Infof("start flush tag for %s ", m)
+		if err := flush(m, tsdb.DBs[m]); err != nil {
 			log.WithError(err).Errorf("flush metric %s err: %s", m, err)
 			return
 		}
-		log.Infof("flush metric %s successfully.", m)
+		log.Infof("flush tag for %s successfully", m)
 	}
-	log.Infof("all flush tasks compeleted!")
+	log.Infof("all flush tasks compeleted !")
 }
 
 func flush(m string, db *sql.DB) (err error) {
@@ -38,15 +40,14 @@ func flush(m string, db *sql.DB) (err error) {
 		return fmt.Errorf("query from tsdb err: %w", err)
 	}
 
+	var tbs []string
+	var tb string
 	if rows != nil {
 		defer func(rows *sql.Rows) {
-			if rErr := rows.Close(); rErr != nil {
-				err = fmt.Errorf("rows close err: %w", rErr)
-			}
+
 		}(rows)
 
 		for rows.Next() {
-			var tb string
 			if err = rows.Scan(&tb); err != nil {
 				return fmt.Errorf("scan err: %w", err)
 			}
@@ -56,12 +57,27 @@ func flush(m string, db *sql.DB) (err error) {
 				continue
 			}
 
-			_, err = db.Exec("alter table ?.? set tag version = 1", "avata_"+m, tb)
-			if err != nil {
-				return fmt.Errorf("set tag err: %w, table: %s", err, tb)
-			}
+			tbs = append(tbs, tb)
 		}
 	}
+
+	if rErr := rows.Close(); rErr != nil {
+		err = fmt.Errorf("rows close err: %w", rErr)
+	}
+
+	if len(tbs) == 0 {
+		return nil
+	}
+
+	bar := progress.New(int64(len(tbs)), ProcessBarOptions...)
+	for i := range tbs {
+		_, err = db.Exec("alter table ?.? set tag version = 1", "avata_"+m, tbs[i])
+		if err != nil {
+			return fmt.Errorf("set tag err: %w, table: %s", err, tbs[i])
+		}
+		bar.Done(1)
+	}
+	bar.Finish()
 
 	return nil
 }

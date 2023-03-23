@@ -7,19 +7,18 @@ import (
 	_ "github.com/taosdata/driver-go/v3/taosSql"
 )
 
-var metrics = []string{"txs", "txs_gas", "amounts"}
+var Metrics = []string{"amounts", "txs", "txs_gas"}
 
 var DBs = map[string]*sql.DB{}
-
 var DSN string
 
 func Init(dsn string) error {
-	for i := range metrics {
-		db, err := sql.Open("taosSql", dsn+"avata_"+metrics[i])
+	for i := range Metrics {
+		db, err := sql.Open("taosSql", dsn+"avata_"+Metrics[i])
 		if err != nil {
-			return fmt.Errorf("connect TDengine db %s, err: %w", "avata_"+metrics[i], err)
+			return fmt.Errorf("connect TDengine db %s, err: %w", "avata_"+Metrics[i], err)
 		}
-		DBs[metrics[i]] = db
+		DBs[Metrics[i]] = db
 	}
 	return nil
 }
