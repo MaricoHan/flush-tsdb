@@ -19,7 +19,7 @@ func FlushTag(log *logrus.Entry) {
 	}
 
 	for _, m := range tsdb.Metrics {
-		log.Infof("\nstart flush tag for %s ", m)
+		log.Infof("start flush tag for %s ", m)
 		if err := flush(m, tsdb.DBs[m]); err != nil {
 			log.WithError(err).Errorf("flush metric %s err: %s", m, err)
 			return
